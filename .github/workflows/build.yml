@@ -41,10 +41,10 @@ jobs:
         python-version: '3.11'
 
     # Step 4: Install Buildozer and its dependencies
-    - name: Install Buildozer
+    - name: Install Buildozer and Cython
       run: |
         pip install --upgrade pip
-        pip install buildozer
+        pip install buildozer cython
 
     # Step 5: Run the Buildozer command to create the APK
     - name: Build with Buildozer
