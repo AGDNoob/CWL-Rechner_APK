@@ -49,6 +49,19 @@ jobs:
     # Step 5: Run the Buildozer command to create the APK
     - name: Build with Buildozer
       run: |
+        # First, let buildozer set up the Android SDK and NDK.
+        # This command is designed to download dependencies without a full build.
+        buildozer android update -v
+
+        # Now, find the path to the build-tools directory, which contains 'aidl'.
+        # We use a wildcard (*) because the version number in the directory name can change.
+        BUILD_TOOLS_PATH=$(ls -d /root/.buildozer/android/platform/android-sdk/build-tools/* | head -n 1)
+        
+        # Add this path to the GitHub Actions environment so subsequent commands can find 'aidl'.
+        echo "Found Android Build Tools at: $BUILD_TOOLS_PATH"
+        echo "$BUILD_TOOLS_PATH" >> $GITHUB_PATH
+
+        # Finally, run the actual build command.
         buildozer android debug
 
     # Step 6: Upload the finished APK so you can download it
