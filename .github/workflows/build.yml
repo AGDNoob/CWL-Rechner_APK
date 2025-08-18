@@ -14,7 +14,8 @@ jobs:
 
     steps:
     # Step 1: Check out your repository code
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
     # Step 2: Set up Java Development Kit (JDK)
     - name: Set up JDK 11
@@ -23,57 +24,43 @@ jobs:
         distribution: 'temurin'
         java-version: '11'
 
-    # Step 3: Set up the necessary system tools that Buildozer needs (heavy-duty version)
+    # Step 3: Set up the necessary system tools
     - name: Set up system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y \
-        git \
-        zip \
-        unzip \
-        autoconf \
-        libtool \
-        pkg-config \
-        zlib1g-dev \
-        libncurses5-dev \
-        libncursesw5-dev \
-        cmake \
-        libffi-dev \
-        libssl-dev \
-        ccache
+        git zip unzip autoconf libtool pkg-config zlib1g-dev \
+        libncurses5-dev libncursesw5-dev cmake libffi-dev libssl-dev ccache
 
     # Step 4: Set up Python
     - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-        # The cache option was removed to prevent the error.
 
     # Step 5: Install Buildozer and its dependencies
     - name: Install Buildozer and Cython
-      run: |
-        pip install --upgrade pip
-        pip install buildozer cython
+      run: pip install --upgrade pip buildozer cython
 
-    # Step 6: Add specific Android versions to the buildozer.spec file
+    # Step 6: Manually set up Android SDK environment
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
+    
+    # Step 7: Configure buildozer.spec with precise versions
     - name: Configure buildozer.spec
       run: |
         echo "" >> buildozer.spec
         echo "android.api = 31" >> buildozer.spec
         echo "android.minapi = 21" >> buildozer.spec
-        echo "android.ndk = 25b" >> buildozer.spec
-        echo "android.build_tools = 34.0.0" >> buildozer.spec
+        echo "android.ndk_version = 25b" >> buildozer.spec
+        echo "android.build_tools_version = 34.0.0" >> buildozer.spec
 
-    # Step 7: Run the Buildozer command to create the APK
+    # Step 8: Run the Buildozer command to create the APK
     - name: Build with Buildozer
       run: |
-        # Automatically accept Android SDK licenses
-        yes | sdkmanager --licenses || true
-        
-        # Run the actual build command with verbose output
         buildozer -v android debug
 
-    # Step 8: Upload the finished APK so you can download it
+    # Step 9: Upload the finished APK so you can download it
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
