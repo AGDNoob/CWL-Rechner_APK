@@ -14,9 +14,16 @@ jobs:
 
     steps:
     # Step 1: Check out your repository code
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    # Step 2: Set up the necessary system tools that Buildozer needs
+    # Step 2: Set up Java Development Kit (JDK)
+    - name: Set up JDK 11
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+
+    # Step 3: Set up the necessary system tools that Buildozer needs (heavy-duty version)
     - name: Set up system dependencies
       run: |
         sudo apt-get update
@@ -32,32 +39,41 @@ jobs:
         libncursesw5-dev \
         cmake \
         libffi-dev \
-        libssl-dev
+        libssl-dev \
+        ccache
 
-    # Step 3: Set up Python
+    # Step 4: Set up Python
     - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
+        cache: 'pip'
 
-    # Step 4: Install Buildozer and its dependencies
+    # Step 5: Install Buildozer and its dependencies
     - name: Install Buildozer and Cython
       run: |
         pip install --upgrade pip
         pip install buildozer cython
 
-    # Step 5: Run the Buildozer command to create the APK
+    # Step 6: Add specific Android versions to the buildozer.spec file
+    - name: Configure buildozer.spec
+      run: |
+        echo "" >> buildozer.spec
+        echo "android.api = 31" >> buildozer.spec
+        echo "android.minapi = 21" >> buildozer.spec
+        echo "android.ndk = 25b" >> buildozer.spec
+        echo "android.build_tools = 34.0.0" >> buildozer.spec
+
+    # Step 7: Run the Buildozer command to create the APK
     - name: Build with Buildozer
       run: |
-        # Add a specific build-tools version to the spec file to ensure it's downloaded
-        # This is a robust way to make sure buildozer finds its tools, like 'aidl'.
-        echo "" >> buildozer.spec
-        echo "android.build_tools_version = 34.0.0" >> buildozer.spec
+        # Automatically accept Android SDK licenses
+        yes | sdkmanager --licenses || true
+        
+        # Run the actual build command with verbose output
+        buildozer -v android debug
 
-        # Now, run the actual build command.
-        buildozer android debug
-
-    # Step 6: Upload the finished APK so you can download it
+    # Step 8: Upload the finished APK so you can download it
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
