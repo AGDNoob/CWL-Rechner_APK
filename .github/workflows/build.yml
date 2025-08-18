@@ -54,7 +54,7 @@ jobs:
 
     # Step 6: Upload the finished APK so you can download it
     - name: Upload APK
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: cwl-rechner-apk
         path: bin/*.apk
