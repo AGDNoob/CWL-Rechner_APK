@@ -17,12 +17,12 @@ st.markdown(
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
     /* Main App Styling */
-    body {
-        color: #e0e0e0;
+    html, body, [class*="st-"] {
         font-family: 'Inter', sans-serif;
     }
     .stApp {
         background-color: #111111;
+        color: #e0e0e0;
     }
     /* Haupt-Container */
     div.block-container {
@@ -73,26 +73,27 @@ st.markdown(
         border: 1px solid #555;
     }
     /* Primärer Button */
-    button[kind="primary"] {
+    .stButton>button[kind="primary"] {
         background: linear-gradient(90deg, #8A2387, #E94057, #F27121);
         color: white;
         border: none;
     }
-    button[kind="primary"]:hover {
+    .stButton>button[kind="primary"]:hover {
         opacity: 0.9;
     }
     /* Sekundärer Button */
-    button[kind="secondary"] {
+    .stButton>button[kind="secondary"] {
         background-color: #333333;
         color: #e0e0e0;
     }
-    button[kind="secondary"]:hover {
+    .stButton>button[kind="secondary"]:hover {
         background-color: #444444;
         border-color: #666;
     }
-    /* Data Editor Dark Mode */
-    .stDataFrame {
-        background-color: #1e1e1e;
+    hr {
+        border-top: 1px solid #333;
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
     }
     </style>
     """,
@@ -131,7 +132,6 @@ def load_settings():
 # Helper Functions
 # ----------------------------
 def calculate_all_points(df, point_system):
-    # Calculation logic remains the same
     if df.empty: return pd.DataFrame(columns=["Name", "Punkte"])
     df_calc = df.copy()
     total_points = pd.Series(0, index=df_calc.index, dtype=float)
@@ -179,7 +179,33 @@ st.markdown('<div style="text-align: center; margin-bottom: 2rem;"><div class="t
 if page == "⚙️ Einstellungen":
     st.markdown("<div class='content-card'>", unsafe_allow_html=True)
     st.header("⚙️ Einstellungen")
-    # ... (Settings UI code remains the same as the final Streamlit version)
+    with st.expander("👥 Clan-Mitglieder verwalten", expanded=True):
+        roster_text = st.text_area("Füge hier die Namen aller Clan-Mitglieder ein (ein Name pro Zeile).", value="\n".join(st.session_state.clan_roster), height=250)
+        if st.button("Mitgliederliste speichern", type="primary"):
+            new_roster = [name.strip() for name in roster_text.split("\n") if name.strip()]
+            unique_roster = list(dict.fromkeys(new_roster))
+            st.session_state.clan_roster = unique_roster
+            save_settings(st.session_state.clan_roster, st.session_state.point_system)
+            st.toast("Mitgliederliste aktualisiert und gespeichert!", icon="👥")
+            st.rerun()
+
+    with st.expander("🔢 Punktesystem anpassen"):
+        points = st.session_state.point_system.copy()
+        st.subheader("Punkte für Rathaus-Level Differenz (ELL)")
+        c1, c2, c3, c4, c5 = st.columns(5)
+        points["ell_gt_2"]=c1.number_input("RH+2",value=points["ell_gt_2"]);points["ell_eq_1"]=c2.number_input("RH+1",value=points["ell_eq_1"]);points["ell_eq_0"]=c3.number_input("RH=0",value=points["ell_eq_0"]);points["ell_eq_-1"]=c4.number_input("RH-1",value=points["ell_eq_-1"]);points["ell_lt_-2"]=c5.number_input("RH-2",value=points["ell_lt_-2"])
+        st.subheader("Punkte für Angriffe")
+        c1,c2,c3=st.columns(3)
+        with c1:st.markdown("<h6>3 Sterne</h6>",unsafe_allow_html=True);points["atk_3s_gt_2"]=st.number_input("3⭐ vs RH+2",value=points["atk_3s_gt_2"]);points["atk_3s_eq"]=st.number_input("3⭐ vs RH=0",value=points["atk_3s_eq"]);points["atk_3s_lt_-2"]=st.number_input("3⭐ vs RH-2",value=points["atk_3s_lt_-2"])
+        with c2:st.markdown("<h6>2 Sterne</h6>",unsafe_allow_html=True);points["atk_2s_ge_90"]=st.number_input("2⭐ (90%+)",value=points["atk_2s_ge_90"]);points["atk_2s_80_89"]=st.number_input("2⭐ (80-89%)",value=points["atk_2s_80_89"]);points["atk_2s_50_79"]=st.number_input("2⭐ (50-79%)",value=points["atk_2s_50_79"])
+        with c3:st.markdown("<h6>1 Stern</h6>",unsafe_allow_html=True);points["atk_1s_90_99"]=st.number_input("1⭐ (90-99%)",value=points["atk_1s_90_99"]);points["atk_1s_50_89"]=st.number_input("1⭐ (50-89%)",value=points["atk_1s_50_89"])
+        st.subheader("Bonuspunkte")
+        c1,c2,c3,c4,c5=st.columns(5)
+        points["aktiv"]=c1.number_input("Aktivität",value=points["aktiv"]);points["bonus_100"]=c2.number_input("100% Bonus",value=points["bonus_100"]);points["mut_base"]=c3.number_input("Mutbonus",value=points["mut_base"]);points["mut_extra"]=c4.number_input("Extra Mut",value=points["mut_extra"]);points["all_attacks"]=c5.number_input("Alle 7 Angriffe",value=points["all_attacks"])
+        if st.button("Punktesystem speichern",type="primary",use_container_width=True):
+            st.session_state.point_system=points
+            save_settings(st.session_state.clan_roster,st.session_state.point_system)
+            st.toast("Punktesystem aktualisiert!",icon="⚙️")
     st.markdown("</div>", unsafe_allow_html=True)
 
 # --- MAIN APP ---
@@ -191,21 +217,59 @@ elif page == "CWL Rechner":
         df["Eigenes_Rathaus"] = None
         st.session_state.data_df = df
 
-    # --- Step 1, 2, 3 Logic ---
     if st.session_state.step == "erl_input":
         st.markdown("<div class='content-card'>", unsafe_allow_html=True)
         st.subheader("Schritt 1: Teilnehmer & Rathäuser")
-        # ... (UI and logic for Step 1)
+        
+        edited_df = st.data_editor(st.session_state.data_df, hide_index=True, key="df_editor")
+        
+        if st.button("Weiter zu Sterne & Prozent", type="primary"):
+            st.session_state.data_df = edited_df
+            st.session_state.step = "pct_input"
+            st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
     elif st.session_state.step == "pct_input":
         st.markdown("<div class='content-card'>", unsafe_allow_html=True)
         st.subheader("Schritt 2: Sterne und Zerstörung (%)")
-        # ... (UI and logic for Step 2)
+        
+        edited_df = st.data_editor(st.session_state.data_df, hide_index=True)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Zurück"):
+                st.session_state.data_df = edited_df
+                st.session_state.step = "erl_input"
+                st.rerun()
+        with col2:
+            if st.button("Berechnen & Auswerten", type="primary"):
+                st.session_state.data_df = edited_df
+                st.session_state.step = "summary"
+                st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
     elif st.session_state.step == "summary":
         st.markdown("<div class='content-card'>", unsafe_allow_html=True)
         st.subheader("Endwertung - Gesamtpunkte je Spieler")
-        # ... (UI and logic for Step 3)
+        
+        summary_df = calculate_all_points(st.session_state.data_df, st.session_state.point_system)
+        st.dataframe(summary_df, use_container_width=True, hide_index=True)
+        
+        st.download_button(
+            label="📥 Excel-Datei herunterladen",
+            data=summary_df.to_csv(index=False).encode('utf-8'),
+            file_name='cwl_bonus_wertung.csv',
+            mime='text/csv',
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Zurück zur Eingabe"):
+                st.session_state.step = "pct_input"
+                st.rerun()
+        with col2:
+            if st.button("Neuen Durchgang starten", type="primary"):
+                st.session_state.data_df = pd.DataFrame() # Clear data
+                st.session_state.step = "erl_input"
+                st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
