@@ -125,6 +125,10 @@ st.markdown(
         font-size: 1rem;
         color: #e0e0e0;
     }
+    /* BUG FIX: Hide the annoying text overlay on the sidebar arrow */
+    [data-testid="stSidebarNav"] > ul > li > div[role="button"] {
+        display: none;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -289,11 +293,15 @@ elif page == "CWL Rechner":
         st.markdown("<div class='content-card'>", unsafe_allow_html=True)
         st.subheader("Schritt 1: Gegner-Rathaus (ERL) eintragen")
         
-        erl_cols = ["Name", "Eigenes_Rathaus"] + [f"Tag{i}_Rathaus_Gegner" for i in range(1, 8)]
-        edited_df = st.data_editor(st.session_state.data_df[erl_cols], hide_index=True, key="df_editor_erl", use_container_width=True)
+        # FEATURE: Clean column names for display
+        column_config = {"Name": st.column_config.TextColumn(disabled=True), "Eigenes_Rathaus": "Eigenes RH"}
+        for i in range(1, 8):
+            column_config[f"Tag{i}_Rathaus_Gegner"] = f"Tag {i} ERL"
+        
+        edited_df = st.data_editor(st.session_state.data_df, hide_index=True, key="df_editor_erl", use_container_width=True, column_config=column_config)
         
         if st.button("Weiter zu Sterne & Prozent", type="primary"):
-            st.session_state.data_df.update(edited_df)
+            st.session_state.data_df = edited_df
             st.session_state.step = "pct_input"
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
@@ -302,24 +310,28 @@ elif page == "CWL Rechner":
         st.markdown("<div class='content-card'>", unsafe_allow_html=True)
         st.subheader("Schritt 2: Sterne und Zerstörung (%)")
 
-        # Create two separate dataframes for editing
         df = st.session_state.data_df
         star_cols = ["Name"] + [f"Tag{i}_Sterne" for i in range(1, 8)]
         pct_cols = ["Name"] + [f"Tag{i}_Prozent" for i in range(1, 8)]
         
-        st.markdown("<h5>Sterne</h5>", unsafe_allow_html=True)
-        edited_stars = st.data_editor(df[star_cols], hide_index=True, key="df_editor_stars", use_container_width=True)
-        st.markdown("<h5>Prozent</h5>", unsafe_allow_html=True)
-        edited_pct = st.data_editor(df[pct_cols], hide_index=True, key="df_editor_pct", use_container_width=True)
+        # FEATURE: Clean column names for display
+        star_config = {"Name": st.column_config.TextColumn(disabled=True)}
+        pct_config = {"Name": st.column_config.TextColumn(disabled=True)}
+        for i in range(1, 8):
+            star_config[f"Tag{i}_Sterne"] = f"Tag {i} ⭐"
+            pct_config[f"Tag{i}_Prozent"] = f"Tag {i} %"
 
-        # Check for changes to trigger sync
+        st.markdown("<h5>Sterne</h5>", unsafe_allow_html=True)
+        edited_stars = st.data_editor(df[star_cols], hide_index=True, key="df_editor_stars", use_container_width=True, column_config=star_config)
+        st.markdown("<h5>Prozent</h5>", unsafe_allow_html=True)
+        edited_pct = st.data_editor(df[pct_cols], hide_index=True, key="df_editor_pct", use_container_width=True, column_config=pct_config)
+
         synced_df = df.copy()
         for i in range(1, 8):
             star_col = f"Tag{i}_Sterne"; pct_col = f"Tag{i}_Prozent"
             synced_df[star_col] = pd.to_numeric(edited_stars[star_col], errors='coerce')
             synced_df[pct_col] = pd.to_numeric(edited_pct[pct_col], errors='coerce')
             
-            # Sync logic
             three_star_mask = synced_df[star_col] == 3
             hundred_pct_mask = synced_df[pct_col] == 100
             synced_df.loc[three_star_mask, pct_col] = 100
