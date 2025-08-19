@@ -410,4 +410,5 @@ elif page == "Credits":
     st.markdown("<p class='credit-text'><strong>Idee:</strong> MagicDragon</p>", unsafe_allow_html=True)
     st.markdown("<p class='credit-text'><strong>Webseite & Code:</strong> AGDNoob ❤️</p>", unsafe_allow_html=True)
     st.markdown("<p class='credit-text'><strong>System:</strong> MagicDragon & AGDNoob</p>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True
+    st.markdown("</div>", unsafe_allow_html=True)
+
