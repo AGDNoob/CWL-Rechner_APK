@@ -125,9 +125,13 @@ st.markdown(
         font-size: 1rem;
         color: #e0e0e0;
     }
-    /* BUG FIX: Hide the annoying text overlay on the sidebar arrow */
-    button[data-testid="stSidebarNav-CollapseButton"] > span {
-        display: none;
+    /* BUG FIX "Atombombenlösung": Hide any text inside the sidebar collapse button */
+    button[data-testid="stSidebarNav-CollapseButton"] p,
+    button[data-testid="stSidebarNav-CollapseButton"] span {
+        display: none !important;
+    }
+    button[data-testid="stSidebarNav-CollapseButton"] svg {
+        display: block !important;
     }
     /* BUG FIX: Prevent table from wrapping on mobile */
     .stDataFrame {
