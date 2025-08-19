@@ -179,33 +179,41 @@ st.markdown('<div style="text-align: center; margin-bottom: 2rem;"><div class="t
 if page == "⚙️ Einstellungen":
     st.markdown("<div class='content-card'>", unsafe_allow_html=True)
     st.header("⚙️ Einstellungen")
-    with st.expander("👥 Clan-Mitglieder verwalten", expanded=True):
-        roster_text = st.text_area("Füge hier die Namen aller Clan-Mitglieder ein (ein Name pro Zeile).", value="\n".join(st.session_state.clan_roster), height=250)
-        if st.button("Mitgliederliste speichern", type="primary"):
-            new_roster = [name.strip() for name in roster_text.split("\n") if name.strip()]
-            unique_roster = list(dict.fromkeys(new_roster))
-            st.session_state.clan_roster = unique_roster
-            save_settings(st.session_state.clan_roster, st.session_state.point_system)
-            st.toast("Mitgliederliste aktualisiert und gespeichert!", icon="👥")
-            st.rerun()
+    
+    # BUG FIX: Replaced buggy st.expander with st.subheader and st.markdown
+    st.subheader("👥 Clan-Mitglieder verwalten")
+    roster_text = st.text_area("Füge hier die Namen aller Clan-Mitglieder ein (ein Name pro Zeile).", value="\n".join(st.session_state.clan_roster), height=250, label_visibility="collapsed")
+    if st.button("Mitgliederliste speichern", type="primary"):
+        new_roster = [name.strip() for name in roster_text.split("\n") if name.strip()]
+        unique_roster = list(dict.fromkeys(new_roster))
+        st.session_state.clan_roster = unique_roster
+        save_settings(st.session_state.clan_roster, st.session_state.point_system)
+        st.toast("Mitgliederliste aktualisiert und gespeichert!", icon="👥")
+        st.rerun()
 
-    with st.expander("🔢 Punktesystem anpassen"):
-        points = st.session_state.point_system.copy()
-        st.subheader("Punkte für Rathaus-Level Differenz (ELL)")
-        c1, c2, c3, c4, c5 = st.columns(5)
-        points["ell_gt_2"]=c1.number_input("RH+2",value=points["ell_gt_2"]);points["ell_eq_1"]=c2.number_input("RH+1",value=points["ell_eq_1"]);points["ell_eq_0"]=c3.number_input("RH=0",value=points["ell_eq_0"]);points["ell_eq_-1"]=c4.number_input("RH-1",value=points["ell_eq_-1"]);points["ell_lt_-2"]=c5.number_input("RH-2",value=points["ell_lt_-2"])
-        st.subheader("Punkte für Angriffe")
-        c1,c2,c3=st.columns(3)
-        with c1:st.markdown("<h6>3 Sterne</h6>",unsafe_allow_html=True);points["atk_3s_gt_2"]=st.number_input("3⭐ vs RH+2",value=points["atk_3s_gt_2"]);points["atk_3s_eq"]=st.number_input("3⭐ vs RH=0",value=points["atk_3s_eq"]);points["atk_3s_lt_-2"]=st.number_input("3⭐ vs RH-2",value=points["atk_3s_lt_-2"])
-        with c2:st.markdown("<h6>2 Sterne</h6>",unsafe_allow_html=True);points["atk_2s_ge_90"]=st.number_input("2⭐ (90%+)",value=points["atk_2s_ge_90"]);points["atk_2s_80_89"]=st.number_input("2⭐ (80-89%)",value=points["atk_2s_80_89"]);points["atk_2s_50_79"]=st.number_input("2⭐ (50-79%)",value=points["atk_2s_50_79"])
-        with c3:st.markdown("<h6>1 Stern</h6>",unsafe_allow_html=True);points["atk_1s_90_99"]=st.number_input("1⭐ (90-99%)",value=points["atk_1s_90_99"]);points["atk_1s_50_89"]=st.number_input("1⭐ (50-89%)",value=points["atk_1s_50_89"])
-        st.subheader("Bonuspunkte")
-        c1,c2,c3,c4,c5=st.columns(5)
-        points["aktiv"]=c1.number_input("Aktivität",value=points["aktiv"]);points["bonus_100"]=c2.number_input("100% Bonus",value=points["bonus_100"]);points["mut_base"]=c3.number_input("Mutbonus",value=points["mut_base"]);points["mut_extra"]=c4.number_input("Extra Mut",value=points["mut_extra"]);points["all_attacks"]=c5.number_input("Alle 7 Angriffe",value=points["all_attacks"])
-        if st.button("Punktesystem speichern",type="primary",use_container_width=True):
-            st.session_state.point_system=points
-            save_settings(st.session_state.clan_roster,st.session_state.point_system)
-            st.toast("Punktesystem aktualisiert!",icon="⚙️")
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    st.subheader("🔢 Punktesystem anpassen")
+    points = st.session_state.point_system.copy()
+    
+    st.markdown("<h5>Punkte für Rathaus-Level Differenz (ELL)</h5>", unsafe_allow_html=True)
+    c1, c2, c3, c4, c5 = st.columns(5)
+    points["ell_gt_2"]=c1.number_input("RH+2",value=points["ell_gt_2"]);points["ell_eq_1"]=c2.number_input("RH+1",value=points["ell_eq_1"]);points["ell_eq_0"]=c3.number_input("RH=0",value=points["ell_eq_0"]);points["ell_eq_-1"]=c4.number_input("RH-1",value=points["ell_eq_-1"]);points["ell_lt_-2"]=c5.number_input("RH-2",value=points["ell_lt_-2"])
+    
+    st.markdown("<h5>Punkte für Angriffe</h5>", unsafe_allow_html=True)
+    c1,c2,c3=st.columns(3)
+    with c1:st.markdown("<h6>3 Sterne</h6>",unsafe_allow_html=True);points["atk_3s_gt_2"]=st.number_input("3⭐ vs RH+2",value=points["atk_3s_gt_2"]);points["atk_3s_eq"]=st.number_input("3⭐ vs RH=0",value=points["atk_3s_eq"]);points["atk_3s_lt_-2"]=st.number_input("3⭐ vs RH-2",value=points["atk_3s_lt_-2"])
+    with c2:st.markdown("<h6>2 Sterne</h6>",unsafe_allow_html=True);points["atk_2s_ge_90"]=st.number_input("2⭐ (90%+)",value=points["atk_2s_ge_90"]);points["atk_2s_80_89"]=st.number_input("2⭐ (80-89%)",value=points["atk_2s_80_89"]);points["atk_2s_50_79"]=st.number_input("2⭐ (50-79%)",value=points["atk_2s_50_79"])
+    with c3:st.markdown("<h6>1 Stern</h6>",unsafe_allow_html=True);points["atk_1s_90_99"]=st.number_input("1⭐ (90-99%)",value=points["atk_1s_90_99"]);points["atk_1s_50_89"]=st.number_input("1⭐ (50-89%)",value=points["atk_1s_50_89"])
+    
+    st.markdown("<h5>Bonuspunkte</h5>", unsafe_allow_html=True)
+    c1,c2,c3,c4,c5=st.columns(5)
+    points["aktiv"]=c1.number_input("Aktivität",value=points["aktiv"]);points["bonus_100"]=c2.number_input("100% Bonus",value=points["bonus_100"]);points["mut_base"]=c3.number_input("Mutbonus",value=points["mut_base"]);points["mut_extra"]=c4.number_input("Extra Mut",value=points["mut_extra"]);points["all_attacks"]=c5.number_input("Alle 7 Angriffe",value=points["all_attacks"])
+    
+    if st.button("Punktesystem speichern",type="primary",use_container_width=True):
+        st.session_state.point_system=points
+        save_settings(st.session_state.clan_roster,st.session_state.point_system)
+        st.toast("Punktesystem aktualisiert!",icon="⚙️")
     st.markdown("</div>", unsafe_allow_html=True)
 
 # --- MAIN APP ---
@@ -221,7 +229,7 @@ elif page == "CWL Rechner":
         st.markdown("<div class='content-card'>", unsafe_allow_html=True)
         st.subheader("Schritt 1: Teilnehmer & Rathäuser")
         
-        edited_df = st.data_editor(st.session_state.data_df, hide_index=True, key="df_editor")
+        edited_df = st.data_editor(st.session_state.data_df, hide_index=True, key="df_editor", use_container_width=True)
         
         if st.button("Weiter zu Sterne & Prozent", type="primary"):
             st.session_state.data_df = edited_df
@@ -233,7 +241,7 @@ elif page == "CWL Rechner":
         st.markdown("<div class='content-card'>", unsafe_allow_html=True)
         st.subheader("Schritt 2: Sterne und Zerstörung (%)")
         
-        edited_df = st.data_editor(st.session_state.data_df, hide_index=True, key="df_editor_pct")
+        edited_df = st.data_editor(st.session_state.data_df, hide_index=True, key="df_editor_pct", use_container_width=True)
         
         col1, col2 = st.columns(2)
         with col1:
@@ -255,7 +263,6 @@ elif page == "CWL Rechner":
         summary_df = calculate_all_points(st.session_state.data_df, st.session_state.point_system)
         st.dataframe(summary_df, use_container_width=True, hide_index=True)
         
-        # Convert dataframe to CSV for download
         @st.cache_data
         def convert_df_to_csv(df):
             return df.to_csv(index=False).encode('utf-8')
