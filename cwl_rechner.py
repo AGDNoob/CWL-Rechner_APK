@@ -126,8 +126,12 @@ st.markdown(
         color: #e0e0e0;
     }
     /* BUG FIX: Hide the annoying text overlay on the sidebar arrow */
-    [data-testid="stSidebarNav"] > ul > li > div[role="button"] {
+    button[data-testid="stSidebarNav-CollapseButton"] > span {
         display: none;
+    }
+    /* BUG FIX: Prevent table from wrapping on mobile */
+    .stDataFrame {
+        width: 100%;
     }
     </style>
     """,
@@ -293,7 +297,6 @@ elif page == "CWL Rechner":
         st.markdown("<div class='content-card'>", unsafe_allow_html=True)
         st.subheader("Schritt 1: Gegner-Rathaus (ERL) eintragen")
         
-        # BUG FIX: Only show ERL columns in step 1
         erl_cols = ["Name", "Eigenes_Rathaus"] + [f"Tag{i}_Rathaus_Gegner" for i in range(1, 8)]
         column_config = {"Name": st.column_config.TextColumn(disabled=True), "Eigenes_Rathaus": "Eigenes RH"}
         for i in range(1, 8):
@@ -302,7 +305,6 @@ elif page == "CWL Rechner":
         edited_df = st.data_editor(st.session_state.data_df[erl_cols], hide_index=True, key="df_editor_erl", use_container_width=True, column_config=column_config)
         
         if st.button("Weiter zu Sterne & Prozent", type="primary"):
-            # Non-destructive update
             st.session_state.data_df.update(edited_df)
             st.session_state.step = "pct_input"
             st.rerun()
@@ -327,7 +329,6 @@ elif page == "CWL Rechner":
         st.markdown("<h5>Prozent</h5>", unsafe_allow_html=True)
         edited_pct = st.data_editor(df[pct_cols], hide_index=True, key="df_editor_pct", use_container_width=True, column_config=pct_config)
 
-        # Create a temporary dataframe from edits to check for changes
         temp_df = df.copy()
         for i in range(1, 8):
             star_col = f"Tag{i}_Sterne"; pct_col = f"Tag{i}_Prozent"
@@ -339,7 +340,6 @@ elif page == "CWL Rechner":
             temp_df.loc[three_star_mask, pct_col] = 100.0
             temp_df.loc[hundred_pct_mask, star_col] = 3.0
         
-        # If sync changed something, rerun to show updated values
         if not df.equals(temp_df):
             st.session_state.data_df = temp_df
             st.rerun()
@@ -347,12 +347,12 @@ elif page == "CWL Rechner":
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Zurück"):
-                st.session_state.data_df = temp_df # Save changes before going back
+                st.session_state.data_df = temp_df
                 st.session_state.step = "erl_input"
                 st.rerun()
         with col2:
             if st.button("Berechnen & Auswerten", type="primary"):
-                st.session_state.data_df = temp_df # Save changes before calculating
+                st.session_state.data_df = temp_df
                 st.session_state.step = "summary"
                 st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
@@ -411,4 +411,3 @@ elif page == "Credits":
     st.markdown("<p class='credit-text'><strong>Webseite & Code:</strong> AGDNoob ❤️</p>", unsafe_allow_html=True)
     st.markdown("<p class='credit-text'><strong>System:</strong> MagicDragon & AGDNoob</p>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
-
