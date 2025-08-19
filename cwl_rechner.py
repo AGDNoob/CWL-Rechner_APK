@@ -95,6 +95,35 @@ st.markdown(
         margin-top: 1.5rem;
         margin-bottom: 1.5rem;
     }
+    .credit-text {
+        text-align: center;
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+    /* Award Card Styling */
+    .award-card {
+        background-color: #2a2a2a;
+        padding: 1.5rem;
+        border-radius: 12px;
+        text-align: center;
+        border: 1px solid #444;
+    }
+    .award-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #a0a0a0;
+    }
+    .award-name {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #e94057; /* Highlight color */
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .award-score {
+        font-size: 1rem;
+        color: #e0e0e0;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -166,21 +195,76 @@ def calculate_all_points(df, point_system):
     results = pd.DataFrame({"Name": df_calc["Name"], "Punkte": total_points.astype(int)})
     return results.sort_values(by=["Punkte", "Name"], ascending=[False, True]).reset_index(drop=True)
 
+def calculate_awards(df, summary_df, point_system):
+    """Calculates special awards like MVP and David vs Goliath."""
+    if summary_df.empty:
+        return {"mvp": {"name": "N/A", "score": 0}, "goliath": {"name": "N/A", "score": 0}}
+
+    # MVP is the player with the highest score
+    mvp = {
+        "name": summary_df.iloc[0]["Name"],
+        "score": f'{summary_df.iloc[0]["Punkte"]} Punkte'
+    }
+
+    # David vs Goliath: Most points against TH >= 2 levels higher
+    df_calc = df.copy()
+    goliath_points = pd.Series(0, index=df_calc.index, dtype=float)
+    df_calc['Eigenes_Rathaus'] = pd.to_numeric(df_calc['Eigenes_Rathaus'], errors='coerce').fillna(0)
+
+    for i in range(1, 8):
+        stars, pct, opp_rh = (pd.to_numeric(df_calc.get(c), errors='coerce') for c in [f"Tag{i}_Sterne", f"Tag{i}_Prozent", f"Tag{i}_Rathaus_Gegner"])
+        attack_made = (stars.notna() | pct.notna()) & opp_rh.notna()
+        is_goliath_attack = (opp_rh - df_calc['Eigenes_Rathaus']) >= 2
+        
+        # We need to recalculate points just for these specific attacks
+        stars = stars.fillna(-1); pct = pct.fillna(0)
+        diff = opp_rh - df_calc['Eigenes_Rathaus']
+        ell_conditions = [diff >= 2, diff == 1, diff == 0, diff == -1, diff <= -2]
+        ell_choices = [point_system["ell_gt_2"], point_system["ell_eq_1"], point_system["ell_eq_0"], point_system["ell_eq_-1"], point_system["ell_lt_-2"]]
+        ell_points = np.select(ell_conditions, ell_choices, default=0)
+        attack_conditions = [
+            (stars == 3) & (diff >= 2), (stars == 3) & (diff.between(-1, 1)), (stars == 3) & (diff <= -2),
+            (stars == 2) & (pct >= 90), (stars == 2) & (pct.between(80, 89)), (stars == 2) & (pct.between(50, 79)),
+            (stars == 1) & (pct.between(90, 99)), (stars == 1) & (pct.between(50, 89)),]
+        attack_choices = [
+            point_system["atk_3s_gt_2"], point_system["atk_3s_eq"], point_system["atk_3s_lt_-2"],
+            point_system["atk_2s_ge_90"], point_system["atk_2s_80_89"], point_system["atk_2s_50_79"],
+            point_system["atk_1s_90_99"], point_system["atk_1s_50_89"]]
+        attack_points = np.select(attack_conditions, attack_choices, default=0)
+        aktiv_points = np.where(attack_made, point_system["aktiv"], 0)
+        bonus_100_points = np.where((pct == 100) & (diff >= 0), point_system["bonus_100"], 0)
+        courage_conditions = [(diff >= 3) & (pct.between(30, 49)), (diff >= 3)]
+        courage_choices = [point_system["mut_extra"], point_system["mut_base"]]
+        mut_points = np.select(courage_conditions, courage_choices, default=0)
+        daily_total = ell_points + attack_points + aktiv_points + bonus_100_points + mut_points
+        
+        goliath_points += np.where(attack_made & is_goliath_attack, daily_total, 0)
+
+    if goliath_points.sum() > 0:
+        winner_idx = goliath_points.idxmax()
+        goliath = {
+            "name": df_calc.loc[winner_idx, "Name"],
+            "score": f'{int(goliath_points.max())} Punkte gegen höhere RH'
+        }
+    else:
+        goliath = {"name": "Niemand", "score": "Keine Angriffe auf viel höhere RH"}
+
+    return {"mvp": mvp, "goliath": goliath}
+
 # --- Session State Initialization ---
 if 'step' not in st.session_state: st.session_state.step = "erl_input"
 if 'data_df' not in st.session_state: st.session_state.data_df = pd.DataFrame()
 load_settings()
 
 # --- Sidebar Navigation & App Header ---
-page = st.sidebar.radio("Navigation", ["CWL Rechner", "⚙️ Einstellungen"])
-st.markdown('<div style="text-align: center; margin-bottom: 2rem;"><div class="title-box">CWL Bonus Rechner</div></div>', unsafe_allow_html=True)
+page = st.sidebar.radio("Navigation", ["CWL Rechner", "⚙️ Einstellungen", "Credits"])
+st.markdown('<div style="text-align: center; margin-top: 2rem; margin-bottom: 2rem;"><div class="title-box">CWL Bonus Rechner</div></div>', unsafe_allow_html=True)
 
 # --- SETTINGS PAGE ---
 if page == "⚙️ Einstellungen":
     st.markdown("<div class='content-card'>", unsafe_allow_html=True)
     st.header("⚙️ Einstellungen")
     
-    # BUG FIX: Replaced buggy st.expander with st.subheader and st.markdown
     st.subheader("👥 Clan-Mitglieder verwalten")
     roster_text = st.text_area("Füge hier die Namen aller Clan-Mitglieder ein (ein Name pro Zeile).", value="\n".join(st.session_state.clan_roster), height=250, label_visibility="collapsed")
     if st.button("Mitgliederliste speichern", type="primary"):
@@ -263,6 +347,38 @@ elif page == "CWL Rechner":
         summary_df = calculate_all_points(st.session_state.data_df, st.session_state.point_system)
         st.dataframe(summary_df, use_container_width=True, hide_index=True)
         
+        st.markdown("<hr>", unsafe_allow_html=True)
+
+        # --- AWARDS SECTION ---
+        st.subheader("🏆 Clan Awards")
+        awards = calculate_awards(st.session_state.data_df, summary_df, st.session_state.point_system)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"""
+            <div class="award-card">
+                <div class="award-title">🏅 MVP</div>
+                <div class="award-name">{awards['mvp']['name']}</div>
+                <div class="award-score">{awards['mvp']['score']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"""
+            <div class="award-card">
+                <div class="award-title">⚔️ David gegen Goliath</div>
+                <div class="award-name">{awards['goliath']['name']}</div>
+                <div class="award-score">{awards['goliath']['score']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # --- CHART SECTION ---
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.subheader("📊 Grafische Auswertung")
+        if not summary_df.empty:
+            chart_data = summary_df.rename(columns={'Punkte': 'Punkte'}).set_index('Name')
+            st.bar_chart(chart_data)
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+        
         @st.cache_data
         def convert_df_to_csv(df):
             return df.to_csv(index=False).encode('utf-8')
@@ -288,3 +404,13 @@ elif page == "CWL Rechner":
                 st.session_state.step = "erl_input"
                 st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
+
+# --- CREDITS PAGE ---
+elif page == "Credits":
+    st.markdown("<div class='content-card'>", unsafe_allow_html=True)
+    st.header("Credits")
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("<p class='credit-text'><strong>Idee:</strong> MagicDragon</p>", unsafe_allow_html=True)
+    st.markdown("<p class='credit-text'><strong>Webseite & Code:</strong> AGDNoob ❤️</p>", unsafe_allow_html=True)
+    st.markdown("<p class='credit-text'><strong>System:</strong> MagicDragon & AGDNoob</p>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
