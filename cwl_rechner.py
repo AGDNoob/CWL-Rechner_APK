@@ -233,7 +233,7 @@ elif page == "CWL Rechner":
         st.markdown("<div class='content-card'>", unsafe_allow_html=True)
         st.subheader("Schritt 2: Sterne und Zerstörung (%)")
         
-        edited_df = st.data_editor(st.session_state.data_df, hide_index=True)
+        edited_df = st.data_editor(st.session_state.data_df, hide_index=True, key="df_editor_pct")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -255,13 +255,21 @@ elif page == "CWL Rechner":
         summary_df = calculate_all_points(st.session_state.data_df, st.session_state.point_system)
         st.dataframe(summary_df, use_container_width=True, hide_index=True)
         
+        # Convert dataframe to CSV for download
+        @st.cache_data
+        def convert_df_to_csv(df):
+            return df.to_csv(index=False).encode('utf-8')
+
+        csv = convert_df_to_csv(summary_df)
+
         st.download_button(
-            label="📥 Excel-Datei herunterladen",
-            data=summary_df.to_csv(index=False).encode('utf-8'),
+            label="📥 Excel-Datei herunterladen (.csv)",
+            data=csv,
             file_name='cwl_bonus_wertung.csv',
             mime='text/csv',
         )
 
+        st.markdown("<hr>", unsafe_allow_html=True)
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Zurück zur Eingabe"):
