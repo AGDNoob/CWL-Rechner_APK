@@ -293,15 +293,17 @@ elif page == "CWL Rechner":
         st.markdown("<div class='content-card'>", unsafe_allow_html=True)
         st.subheader("Schritt 1: Gegner-Rathaus (ERL) eintragen")
         
-        # FEATURE: Clean column names for display
+        # BUG FIX: Only show ERL columns in step 1
+        erl_cols = ["Name", "Eigenes_Rathaus"] + [f"Tag{i}_Rathaus_Gegner" for i in range(1, 8)]
         column_config = {"Name": st.column_config.TextColumn(disabled=True), "Eigenes_Rathaus": "Eigenes RH"}
         for i in range(1, 8):
             column_config[f"Tag{i}_Rathaus_Gegner"] = f"Tag {i} ERL"
         
-        edited_df = st.data_editor(st.session_state.data_df, hide_index=True, key="df_editor_erl", use_container_width=True, column_config=column_config)
+        edited_df = st.data_editor(st.session_state.data_df[erl_cols], hide_index=True, key="df_editor_erl", use_container_width=True, column_config=column_config)
         
         if st.button("Weiter zu Sterne & Prozent", type="primary"):
-            st.session_state.data_df = edited_df
+            # Non-destructive update
+            st.session_state.data_df.update(edited_df)
             st.session_state.step = "pct_input"
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
@@ -314,7 +316,6 @@ elif page == "CWL Rechner":
         star_cols = ["Name"] + [f"Tag{i}_Sterne" for i in range(1, 8)]
         pct_cols = ["Name"] + [f"Tag{i}_Prozent" for i in range(1, 8)]
         
-        # FEATURE: Clean column names for display
         star_config = {"Name": st.column_config.TextColumn(disabled=True)}
         pct_config = {"Name": st.column_config.TextColumn(disabled=True)}
         for i in range(1, 8):
@@ -326,30 +327,32 @@ elif page == "CWL Rechner":
         st.markdown("<h5>Prozent</h5>", unsafe_allow_html=True)
         edited_pct = st.data_editor(df[pct_cols], hide_index=True, key="df_editor_pct", use_container_width=True, column_config=pct_config)
 
-        synced_df = df.copy()
+        # Create a temporary dataframe from edits to check for changes
+        temp_df = df.copy()
         for i in range(1, 8):
             star_col = f"Tag{i}_Sterne"; pct_col = f"Tag{i}_Prozent"
-            synced_df[star_col] = pd.to_numeric(edited_stars[star_col], errors='coerce')
-            synced_df[pct_col] = pd.to_numeric(edited_pct[pct_col], errors='coerce')
+            temp_df[star_col] = pd.to_numeric(edited_stars[star_col], errors='coerce')
+            temp_df[pct_col] = pd.to_numeric(edited_pct[pct_col], errors='coerce')
             
-            three_star_mask = synced_df[star_col] == 3
-            hundred_pct_mask = synced_df[pct_col] == 100
-            synced_df.loc[three_star_mask, pct_col] = 100
-            synced_df.loc[hundred_pct_mask, star_col] = 3
+            three_star_mask = temp_df[star_col] == 3
+            hundred_pct_mask = temp_df[pct_col] == 100
+            temp_df.loc[three_star_mask, pct_col] = 100.0
+            temp_df.loc[hundred_pct_mask, star_col] = 3.0
         
-        if not df.equals(synced_df):
-            st.session_state.data_df = synced_df
+        # If sync changed something, rerun to show updated values
+        if not df.equals(temp_df):
+            st.session_state.data_df = temp_df
             st.rerun()
 
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Zurück"):
-                st.session_state.data_df = synced_df
+                st.session_state.data_df = temp_df # Save changes before going back
                 st.session_state.step = "erl_input"
                 st.rerun()
         with col2:
             if st.button("Berechnen & Auswerten", type="primary"):
-                st.session_state.data_df = synced_df
+                st.session_state.data_df = temp_df # Save changes before calculating
                 st.session_state.step = "summary"
                 st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
